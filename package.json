@@ -1,0 +1,22 @@
+{
+  "name": "agent-games",
+  "version": "0.1.0",
+  "private": true,
+  "description": "zkVerify Agent Games agent: Proof Gatekeeper with circuit-backed Groth16 proofs",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "replay": "node --env-file-if-exists=.env scripts/replay.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "js-sha3": "0.8.0",
+    "snarkjs": "0.7.5"
+  }
+}
