@@ -48,7 +48,7 @@ test("preflight returns a signed ok", async () => {
   const r = await post({ type: "agent-games.preflight.v1", agent_id: "agt_x", issued_at: new Date().toISOString(), nonce: "abc123" });
   assert.equal(r.status, 200);
   assert.deepEqual(r.json, { ok: true, protocolVersion: "v1" });
-  assert.equal(verifySignature(secret, Buffer.from(r.text), r.sig), "hex");
+  assert.equal(verifySignature(secret, Buffer.from(r.text), r.sig), "text:hex");
 });
 
 test("unsigned requests are refused before parsing", async () => {
@@ -62,7 +62,7 @@ test("valid task: APPROVE with a Groth16 proof that verifies against the officia
   assert.equal(r.status, 200);
   assert.equal(r.json.decision, "APPROVE");
   assert.equal(r.json.proof_tx, t.input.proof_tx);
-  assert.equal(verifySignature(secret, Buffer.from(r.text), r.sig), "hex");
+  assert.equal(verifySignature(secret, Buffer.from(r.text), r.sig), "text:hex");
   assert.ok(await snarkjs.groth16.verify(vk, r.json.public_signals, r.json.proof));
   assert.equal(r.json.public_signals[11], "1"); // decision signal
 });

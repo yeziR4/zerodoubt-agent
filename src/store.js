@@ -39,6 +39,9 @@ export class Store {
 
   log(name, row) {
     append(path.join(this.dir, `${name}.jsonl`), { ...row, at: new Date().toISOString() });
+    // Mirror to stdout so the host's log viewer shows activity; full task input stays on disk.
+    const { input, job, ...summary } = row;
+    console.log(`[${name}] ${JSON.stringify(summary)}`);
   }
 }
 
