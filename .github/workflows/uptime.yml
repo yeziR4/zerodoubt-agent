@@ -1,0 +1,29 @@
+# Fails (and GitHub emails the repo owner) when the agent endpoint stops answering.
+# Checks liveness and that request authentication is still enforced; no secrets needed.
+name: Agent uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AGENT_URL: https://gatekeeper-agent-production.up.railway.app/agent
+      HEALTH_URL: https://gatekeeper-agent-production.up.railway.app/health
+    steps:
+      - name: Health endpoint answers
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$HEALTH_URL") && [ "$code" = 200 ] && { echo "health ok"; exit 0; }
+            echo "attempt $i: got $code"; sleep 20
+          done
+          echo "::error::Agent health check failed 3 times"; exit 1
+
+      - name: Unsigned requests are still refused
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST -H 'content-type: application/json' -d '{"type":"agent-games.preflight.v1"}' "$AGENT_URL")
+          [ "$code" = 401 ] && echo "auth enforced" || { echo "::error::Expected 401 for unsigned request, got $code"; exit 1; }
