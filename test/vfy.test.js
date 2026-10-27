@@ -48,6 +48,11 @@ test("publicInputsHash follows the guide's field order and widths", () => {
   const expected = "0x" + sha3.keccak256(Buffer.concat(fields.map((f) => Buffer.from(f.toString(16).padStart(64, "0"), "hex"))));
   assert.equal(publicInputsHash(args), expected);
   assert.notEqual(idempotencyKey("m", 1), idempotencyKey("m", 2));
+  assert.equal(idempotencyKey("m", 1), idempotencyKey("m", 1));
+  // the cases the platform rejected: version digit must be 1-8, variant digit 8/9/a/b
+  for (let t = 1; t <= 200; t++) {
+    assert.match(idempotencyKey("82db2f61-8b3a-49d7-a204-ff0cd51905e7", t), /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  }
 });
 
 test("turn handler: signed EXTRACT 10 with a policy proof that verifies", async () => {
@@ -80,6 +85,10 @@ test("turn handler: signed EXTRACT 10 with a policy proof that verifies", async 
 
   const retry = await post(turn);
   assert.equal(retry.text, r.text, "retries are idempotent");
+
+  const { strategyCommitment, ...practice } = turn;
+  const p = JSON.parse((await post({ ...practice, matchId: "11111111-2222-3333-4444-555555555555" })).text);
+  assert.deepEqual(p.action, { type: "EXTRACT", amount: 10 }, "practice envelopes omit the commitment");
 
   const wrong = JSON.parse((await post({ ...turn, turn: 4, strategyCommitment: { hash: "0x01" } })).text);
   assert.deepEqual(wrong.action, { type: "HOLD" }, "no proof possible -> HOLD, no amount field");

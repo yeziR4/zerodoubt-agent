@@ -78,8 +78,12 @@ export class StealTheVfy {
     return { proof, publicSignals };
   }
 
-  /** The platform's frozen commitment must be ours, or no proof can satisfy it. */
+  /**
+   * The platform's frozen commitment must be ours, or no proof can satisfy it.
+   * Practice envelopes omit strategyCommitment; the registered one is implied.
+   */
   commitmentMatches(turn) {
+    if (turn.strategyCommitment?.hash == null) return true;
     try {
       return BigInt(turn.strategyCommitment?.hash) === this.commitment;
     } catch {
@@ -88,9 +92,18 @@ export class StealTheVfy {
   }
 }
 
-/** Unique per (match, turn), stable across retries. */
+// RFC 4122 URL namespace; any fixed namespace works, it only has to stay constant.
+const UUID_NAMESPACE = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
+
+/**
+ * Unique per (match, turn), stable across retries. A real UUIDv5: the platform's
+ * schema validates the version and variant bits, not just the shape.
+ */
 export function idempotencyKey(matchId, turn) {
-  const h = crypto.createHash("sha256").update(`${matchId}:${turn}`).digest("hex");
+  const b = crypto.createHash("sha1").update(UUID_NAMESPACE).update(`${matchId}:${turn}`).digest().subarray(0, 16);
+  b[6] = (b[6] & 0x0f) | 0x50; // version 5
+  b[8] = (b[8] & 0x3f) | 0x80; // RFC 4122 variant
+  const h = b.toString("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
