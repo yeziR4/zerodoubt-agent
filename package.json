@@ -17,6 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "js-sha3": "0.8.0",
+    "poseidon-lite": "0.3.0",
     "snarkjs": "0.7.5"
   }
 }

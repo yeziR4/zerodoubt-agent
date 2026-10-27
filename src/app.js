@@ -1,17 +1,79 @@
 import { verifySignature, sign } from "./hmac.js";
 import { decide, TASK_TYPE } from "./gatekeeper.js";
 import { withTimeout } from "./prover.js";
+import { isTurn, publicInputsHash, buildTurnResponse } from "./vfy/agent.js";
 
 const PREFLIGHT_TYPE = "agent-games.preflight.v1";
 const MAX_BODY_BYTES = 1 << 20;
 const DEFAULT_BUDGET_MS = 45_000;
 
 /**
- * deps: { config, store, prover, kurier, now? }
+ * deps: { config, store, prover, kurier, vfy?, now? }
  * Returns a node:http request listener.
  */
-export function createApp({ config, store, prover, kurier, now = () => Date.now() }) {
-  const inFlight = new Map(); // task_id -> Promise<{ body, scheme }>
+export function createApp({ config, store, prover, kurier, vfy = null, now = () => Date.now() }) {
+  const inFlight = new Map(); // task or turn key -> Promise<{ body, scheme }>
+
+  function once(key, scheme, work) {
+    const cached = store.cachedResponse(key);
+    if (cached) return cached;
+    if (inFlight.has(key)) return inFlight.get(key);
+    const p = work().then((body) => {
+      store.saveResponse(key, body, scheme);
+      return { body, scheme };
+    });
+    inFlight.set(key, p);
+    return p.finally(() => inFlight.delete(key));
+  }
+
+  function budgetMs(deadlineAt) {
+    const deadline = Date.parse(deadlineAt);
+    return Number.isFinite(deadline) ? deadline - now() - config.deadlineMarginMs : DEFAULT_BUDGET_MS;
+  }
+
+  async function handleTurn(turn, scheme) {
+    return once(`stv:${turn.matchId}:${turn.turn}`, scheme, async () => {
+      let action = { type: "HOLD" };
+      let proved = null;
+      let note = "no strategy configured";
+      if (vfy) {
+        const wanted = vfy.decide(turn);
+        if (!vfy.commitmentMatches(turn)) {
+          note = "commitment mismatch";
+        } else {
+          try {
+            proved = await withTimeout(vfy.prove(turn, wanted), budgetMs(turn.deadlineAt));
+            action = wanted;
+            note = "proved";
+          } catch (err) {
+            note = `prove failed: ${err.message}`;
+          }
+        }
+      }
+      // Without a proof the action cannot be justified, so fall back to an honest HOLD.
+      const inputsHash = publicInputsHash({
+        commitment: vfy ? vfy.commitment : 0n,
+        matchId: turn.matchId,
+        turn: turn.turn,
+        selfBalance: turn.state.selfBalance,
+        opponentBalance: turn.state.opponentBalance,
+        action,
+      });
+      const body = JSON.stringify(buildTurnResponse(turn, action, { proved, inputsHash, now: new Date(now()) }));
+      store.log("turns", {
+        matchId: turn.matchId,
+        turn: turn.turn,
+        mode: turn.mode,
+        self: turn.state.selfBalance,
+        opp: turn.state.opponentBalance,
+        selfFortifiedUntilTurn: turn.state.selfFortifiedUntilTurn ?? null,
+        opponentFortifiedUntilTurn: turn.state.opponentFortifiedUntilTurn ?? null,
+        action: action.type + (action.amount ? ` ${action.amount}` : ""),
+        note,
+      });
+      return body;
+    });
+  }
 
   async function handleGatekeeper(task, scheme) {
     const cached = store.cachedResponse(task.task_id);
@@ -101,6 +163,10 @@ export function createApp({ config, store, prover, kurier, now = () => Date.now(
         const out = await handleGatekeeper(msg, scheme);
         return send(res, 200, out.body, sign(config.hmacSecret, out.body, out.scheme));
       }
+      if (isTurn(msg)) {
+        const out = await handleTurn(msg, scheme);
+        return send(res, 200, out.body, sign(config.hmacSecret, out.body, out.scheme));
+      }
       store.log("unhandled", { type: msg?.type ?? null, eventId: msg?.eventId ?? null });
       return reply(res, 501, { error: "unsupported task type" }, scheme);
     } catch (err) {
@@ -108,6 +174,9 @@ export function createApp({ config, store, prover, kurier, now = () => Date.now(
       // Fail closed: a gatekeeper task that blew up is a REJECT, never silence.
       if (msg?.type === TASK_TYPE) {
         return reply(res, 200, { decision: "REJECT", reason_code: "INTERNAL_ERROR", proof_tx: msg.input?.proof_tx ?? null }, scheme);
+      }
+      if (isTurn(msg)) {
+        return reply(res, 200, buildTurnResponse(msg, { type: "HOLD" }, { proved: null, inputsHash: null }), scheme);
       }
       return reply(res, 500, { error: "internal error" }, scheme);
     }

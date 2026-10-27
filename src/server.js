@@ -4,6 +4,7 @@ import { Store } from "./store.js";
 import { GatekeeperProver } from "./prover.js";
 import { makeKurier } from "./kurier.js";
 import { createApp } from "./app.js";
+import { StealTheVfy } from "./vfy/agent.js";
 
 if (!config.hmacSecret) {
   console.error("AGENT_GAMES_HMAC_SECRET is not set; every request will be rejected until it is.");
@@ -27,7 +28,15 @@ prover
   .then(() => console.log("prover warm"))
   .catch((err) => console.error("prover warm-up failed:", err.message));
 
-const server = http.createServer(createApp({ config, store, prover, kurier }));
+let vfy = null;
+if (config.strategySalt) {
+  vfy = new StealTheVfy({ circuitsDir: config.circuitsDir, params: config.strategyParams, salt: config.strategySalt });
+  console.log(`steal-the-vfy commitment ${vfy.commitmentHex}`);
+} else {
+  console.error("STRATEGY_SALT is not set; Steal the VFY turns will HOLD without proofs.");
+}
+
+const server = http.createServer(createApp({ config, store, prover, kurier, vfy }));
 server.requestTimeout = 65_000;
 server.listen(config.port, () => {
   console.log(`agent listening on :${config.port}${config.agentPath} (task_id encoding: ${config.taskIdEncoding})`);
