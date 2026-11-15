@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      AGENT_URL: https://gatekeeper-agent-production.up.railway.app/agent
-      HEALTH_URL: https://gatekeeper-agent-production.up.railway.app/health
+      AGENT_URL: https://gatekeeper-agent-production-3e3e0811.up.railway.app/agent
+      HEALTH_URL: https://gatekeeper-agent-production-3e3e0811.up.railway.app/health
     steps:
       - name: Health endpoint answers
         run: |
