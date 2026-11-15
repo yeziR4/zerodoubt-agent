@@ -81,7 +81,9 @@ test("turn handler: signed EXTRACT 10 with a policy proof that verifies", async 
   assert.equal(r.sig, crypto.createHmac("sha256", secret).update(r.text).digest("hex"));
   assert.deepEqual([json.matchId, json.turn, json.action], [turn.matchId, 3, { type: "EXTRACT", amount: 10 }]);
   assert.equal(json.policyProof.circuitVersion, "v1");
-  assert.ok(await snarkjs.groth16.verify(vfy.vk, json.public_signals, json.proof));
+  assert.equal(json.proof, undefined); // never at top level
+  assert.equal(json.public_signals, undefined);
+  assert.ok(await snarkjs.groth16.verify(vfy.vk, json.policyProof.public_signals, json.policyProof.proof));
 
   const retry = await post(turn);
   assert.equal(retry.text, r.text, "retries are idempotent");

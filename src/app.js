@@ -189,7 +189,8 @@ export function createApp({ config, store, prover, kurier, vfy = null, now = () 
 }
 
 function send(res, status, body, signature) {
-  const headers = { "content-type": "application/json", "content-length": Buffer.byteLength(body) };
+  // no-transform: proxies must not compress replies into chunked bodies the platform client can't read.
+  const headers = { "content-type": "application/json", "content-length": Buffer.byteLength(body), "cache-control": "no-store, no-transform" };
   if (signature) headers["x-agent-games-signature"] = signature;
   res.writeHead(status, headers);
   res.end(body);

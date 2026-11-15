@@ -17,7 +17,7 @@ const circuitsDir = path.resolve("circuits");
 let server, base, dataDir, vk;
 
 function makeServer(prover) {
-  const config = { agentPath: "/agent", hmacSecret: secret, taskIdEncoding: "utf8", deadlineMarginMs: 8000 };
+  const config = { agentPath: "/agent", hmacSecret: secret, taskIdEncoding: "uuid", deadlineMarginMs: 8000 };
   const store = new Store(dataDir);
   return http.createServer(createApp({ config, store, prover, kurier: null }));
 }

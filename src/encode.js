@@ -22,11 +22,17 @@ export function toField(value) {
   return toBigInt(value) % FIELD_P;
 }
 
-/** task_id strings like "gk_8d31_..." are not numbers; the encoding is configurable. */
+/** task_id strings like "task_R03_<uuid>" are not numbers; the encoding is configurable (default "uuid"). */
 export function encodeTaskId(taskId, encoding) {
   if (/^(0x[0-9a-fA-F]+|[0-9]+)$/.test(String(taskId))) return toField(String(taskId));
   const bytes = Buffer.from(String(taskId), "utf8");
   switch (encoding) {
+    case "uuid": {
+      // Platform encoding (confirmed on scored tasks, e.g. task_R03_<uuid>): the trailing UUID as one hex number.
+      const m = String(taskId).match(/[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i);
+      if (!m) throw new Error(`task_id has no trailing UUID: ${taskId}`);
+      return BigInt("0x" + m[0].replace(/-/g, ""));
+    }
     case "utf8":
       return BigInt("0x" + (bytes.toString("hex") || "0")) % FIELD_P;
     case "sha256":

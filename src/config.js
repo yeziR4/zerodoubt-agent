@@ -10,7 +10,7 @@ export const config = {
   dataDir: process.env.DATA_DIR ?? path.join(root, "data"),
   circuitsDir: process.env.CIRCUITS_DIR ?? path.join(root, "circuits"),
   // How a non-numeric task_id becomes a field element; confirm against practice tasks.
-  taskIdEncoding: process.env.TASK_ID_ENCODING ?? "utf8",
+  taskIdEncoding: process.env.TASK_ID_ENCODING ?? "uuid",
   // Stop proving this many ms before deadline_at and answer without a proof instead.
   deadlineMarginMs: Number(process.env.DEADLINE_MARGIN_MS ?? 8000),
   kurierApiKey: process.env.KURIER_API_KEY ?? "",

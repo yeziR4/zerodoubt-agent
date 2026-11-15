@@ -109,17 +109,20 @@ export function idempotencyKey(matchId, turn) {
 
 export function buildTurnResponse(turn, action, { proved, inputsHash, now = new Date() }) {
   const response = {
+    protocolVersion: "v1",
     matchId: turn.matchId,
     turn: turn.turn,
     // amount must be omitted entirely for HOLD / FORTIFY
     action: action.type === "EXTRACT" ? { type: "EXTRACT", amount: action.amount } : { type: action.type },
+    // The protocol requires proof and public_signals inside policyProof and nowhere else;
+    // anywhere else the platform sees no proof, scores -2 and substitutes HOLD.
     policyProof: { circuitVersion: CIRCUIT_VERSION, publicInputsHash: inputsHash },
     agentTimestamp: now.toISOString(),
     idempotencyKey: idempotencyKey(turn.matchId, turn.turn),
   };
   if (proved) {
-    response.proof = proved.proof;
-    response.public_signals = proved.publicSignals;
+    response.policyProof.proof = proved.proof;
+    response.policyProof.public_signals = proved.publicSignals;
   }
   return response;
 }

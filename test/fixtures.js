@@ -8,7 +8,7 @@ export function task(overrides = {}, top = {}) {
   n += 1;
   return {
     type: "agent-games.proof-gatekeeper.v1",
-    task_id: `gk_test_${n}`,
+    task_id: `task_R01_00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
     mode: "practice",
     issued_at: new Date().toISOString(),
     deadline_at: new Date(Date.now() + 60_000).toISOString(),

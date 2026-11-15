@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { decide, REASONS } from "../src/gatekeeper.js";
 import { task, OTHER, VK_BAD, ADDR } from "./fixtures.js";
 
-const none = { acceptedBy: () => undefined, taskIdEncoding: "utf8" };
+const none = { acceptedBy: () => undefined, taskIdEncoding: "uuid" };
 
 const cases = [
   ["valid condition", {}, "APPROVE", REASONS.VALID],
@@ -50,4 +50,11 @@ test("field traps take precedence over reuse so the rejection stays provable", (
 test("circuit decision bit matches the verdict", () => {
   assert.equal(decide(task(), none).circuitInput.decision, 1n);
   assert.equal(decide(task({ amount: "5000" }), none).circuitInput.decision, 0n);
+});
+
+test("uuid task_id encoding: trailing UUID as one hex number (platform-confirmed)", async () => {
+  const { encodeTaskId } = await import("../src/encode.js");
+  assert.equal(encodeTaskId("task_R03_a5399562-0000-4000-8000-000000000001", "uuid"), 0xa5399562000040008000000000000001n);
+  assert.equal(encodeTaskId("practice_732554d9-1d57-453d-87b4-ccfb3fac749d", "uuid"), 0x732554d91d57453d87b4ccfb3fac749dn);
+  assert.throws(() => encodeTaskId("gk_no_uuid", "uuid"));
 });
