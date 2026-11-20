@@ -44,7 +44,7 @@ console.log(`preflight  ${pre.status} sig=${pre.sigOk} ${JSON.stringify(pre.json
 let failures = 0;
 for (const [i, [expected, overrides]] of cases.entries()) {
   const r = await send({
-    type: "agent-games.proof-gatekeeper.v1", task_id: `gk_${run}_${i}`, mode: "practice",
+    type: "agent-games.proof-gatekeeper.v1", task_id: `task_R00_${crypto.randomUUID()}`, // platform format: the trailing UUID is the circuit taskId mode: "practice",
     issued_at: new Date().toISOString(), deadline_at: new Date(Date.now() + 60_000).toISOString(),
     input: { ...valid(i), ...overrides },
   });
